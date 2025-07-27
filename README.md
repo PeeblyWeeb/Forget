@@ -1,6 +1,10 @@
 # Forget
 A bulk message deletion tool for Discord similar to undiscord, but better.
 
+> [!WARNING]
+> **Forget is technically against [Discord's Terms of Service](https://discord.com/terms)** as it is considered a self bot.
+> I am not responsible for your account getting disabled and or terminated, use at your own risk. You have been warned.
+
 ## Features
 - **Save state** You can close Forget and re-open it later and continue where you left off.
 - **Archive deleted messages** Forget never deletes cached messages, so you can reconstruct your conversations later!
