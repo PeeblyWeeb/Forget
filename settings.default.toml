@@ -1,0 +1,12 @@
+# Your Discord token, there are many ways to get this. Please use Google.
+token=""
+
+# You can find the id of a channel by enabling Developer Mode in Discord-
+# -and then right clicking a channel or direct message and selecting "Copy Channel ID"
+channel_id=111222333444
+
+# How long should Forget wait in-between message deletion requests? (in seconds)
+delete_delay=1.6
+
+# How long should Forget wait before querying the next page of messages? (in seconds)
+discover_delay=1
