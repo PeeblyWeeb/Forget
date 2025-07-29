@@ -89,24 +89,28 @@ async def main(session: aiohttp.ClientSession):
 
     start = time.time()
     while not shutdown_now:
-        async with session.get(
-            f"https://discord.com/api/v9/channels/{config["channel_id"]}/messages",
-            params=params,
-        ) as res:
-            if not res.ok:
-                logger.critical(f"Failed to query messages with error {res.status}")
-                return
-            messages = await res.json()
+        try:
+            async with session.get(
+                f"https://discord.com/api/v9/channels/{config["channel_id"]}/messages",
+                params=params,
+            ) as res:
+                if not res.ok:
+                    logger.critical(f"Failed to query messages with error {res.status}")
+                    return
+                messages = await res.json()
 
-            if not messages:
-                logger.info("Empty message list, assuming we're done. Moving to deletion step.")
-                break
-            
-            if not cache.get("messages"): 
-                cache["messages"] = []
-            cache["messages"].extend(messages)
-            cache["last_before"] = messages[-1]["id"]
-            params["before"] = messages[-1]["id"]
+                if not messages:
+                    logger.info("Empty message list, assuming we're done. Moving to deletion step.")
+                    break
+                
+                if not cache.get("messages"): 
+                    cache["messages"] = []
+                cache["messages"].extend(messages)
+                cache["last_before"] = messages[-1]["id"]
+                params["before"] = messages[-1]["id"]
+        except Exception as e:
+            logger.exception(e)
+            return cache, cache_file
 
         logger.info(f"Discovered {len(cache["messages"])} message(s), {round(time.time() - start)} second(s) elapsed. Saving..")
         # await save_cache(cache, cache_file)
@@ -143,8 +147,11 @@ async def main(session: aiohttp.ClientSession):
             continue
 
         average_start = time.time()
-
-        await delete_message(session, message["id"])
+        try:
+            await delete_message(session, message["id"])
+        except Exception as e:
+            logger.exception(e)
+            return cache, cache_file
 
         cache["messages"].remove(message)
         cache["deleted_messages"].append(message)
@@ -177,7 +184,8 @@ async def main_wrapper():
         headers={
             "Authorization": config["token"],
             "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) discord/0.0.102 Chrome/134.0.6998.205 Electron/35.3.0 Safari/537.36"
-        }
+        },
+        timeout=aiohttp.ClientTimeout(20.0)
     )
 
     cache = {}
@@ -190,11 +198,17 @@ async def main_wrapper():
         logger.warning("Handling Ctrl+C gracefully..")
     finally:
         if cache and cache_file:
+            logger.info("Saving...")
             await save_cache(cache, cache_file)
+
+        lock_file = Path(f"cache/{config["channel_id"]}.json.lock")
+        if lock_file.exists():
+            lock_file.unlink()
         await session.close()
 
 def handle_shutdown(*_):
-    logger.warning("Handling close signal...")
+    logger.warning("Received closed signal!")
+    logger.warning("Please wait for the next deletion task to complete.")
 
     global shutdown_now
     shutdown_now = True
