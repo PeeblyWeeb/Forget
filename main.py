@@ -80,6 +80,7 @@ async def main(session: aiohttp.ClientSession):
 
     cache_file = Path(f"cache/{config["channel_id"]}.json")
     if cache_file.exists():
+        logger.info("Loading previous state from cache file..")
         async with aiofiles.open(cache_file) as f:
             cache = json.loads(await f.read())
 
@@ -131,8 +132,16 @@ async def main(session: aiohttp.ClientSession):
     if not cache.get("deleted_messages"):
         cache["deleted_messages"] = []
 
+    valid_message_types = (0, 19)
+
     messages = list(cache["messages"].__reversed__() if top_to_bottom_deletion else cache["mesages"])
-    messages_to_delete = [msg for msg in messages if msg["author"]["id"] == current_user["id"]]
+    messages_to_delete = [
+        msg for msg in messages 
+        if (
+            msg["author"]["id"] == current_user["id"]
+            and msg["type"] in valid_message_types
+        )
+    ]
 
     length = len(messages_to_delete) + len(cache["deleted_messages"])
 
@@ -143,7 +152,7 @@ async def main(session: aiohttp.ClientSession):
             break
         if message["author"]["id"] != current_user["id"]:
             continue
-        if message["type"] not in (0, 19):
+        if message["type"] not in valid_message_types:
             continue
 
         average_start = time.time()
